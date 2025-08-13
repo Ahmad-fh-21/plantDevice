@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <sensors.h>
 #include <motor.h>
-
-
+#include <BluetoothSerial.h>
+#include <RTC_handler.h>
 
 // // main Variables
 // float listofSensorsReadings[50] = {}; // Array to store sensor readings
@@ -35,6 +35,26 @@ TaskHandle_t Task2Handle = NULL;
 TaskHandle_t Task3Handle = NULL;
 TaskHandle_t Task4Handle = NULL;
 volatile bool tasksRunning = true;
+
+/*
+// Bluetooth parameters
+// Add this check for Bluetooth support
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` enable it
+#endif
+
+// Create BluetoothSerial instance
+BluetoothSerial SerialBT;
+
+// Add these global variables
+const char* DEVICE_NAME = "ESP32_Plant_Monitor";
+String btMessage = "";
+
+*/
+
+
+
+
 // ****************************************************** 2.5 sec fill 100 mili liter 
 void goToSleep() {
     // Turn off all outputs
@@ -69,13 +89,37 @@ void goToSleep() {
     esp_deep_sleep_start();
 }
 
-
-
-
-
-void sensors_validateReadings() {
-
+/*
+// Add this function to handle Bluetooth messages
+void handleBluetoothMessages() {
+    if (SerialBT.available()) {
+        char inChar = (char)SerialBT.read();
+        if (inChar == '\n') {
+            // Process complete message
+            if (btMessage == "STATUS") {
+                // Send sensor status
+                SerialBT.printf("Soil States:\n");
+                for (int i = 0; i < 3; i++) {
+                    SerialBT.printf("Sensor %d: %s\n", 
+                        i + 1, 
+                        sensors_getSoilStateString(sensors.listofsoilStates[i]));
+                }
+            } else if (btMessage == "WAKE") {
+                SerialBT.println("Waking up device...");
+                // Add wake-up logic here
+            } else if (btMessage == "SLEEP") {
+                SerialBT.println("Going to sleep...");
+                shouldEnterSleep = true;
+            }
+            btMessage = ""; // Clear the message buffer
+        } else {
+            btMessage += inChar; // Add character to message
+        }
+    }
 }
+
+*/
+
 
 void calculateAverage(sensors_struct_t *sensors) {
     if (sensors->readingComplete == true && sensors->counter_readings > 0) {
@@ -86,8 +130,8 @@ void calculateAverage(sensors_struct_t *sensors) {
             sum += sensors->listofSensorsReadings[i];
             if ((i+1) % 10 == 0 && i != 0) {
               sensors->averageIndex_readings[i / 10] = sum /  10; // Store average every 10 readings
-             Serial.print("sum: ");
-             Serial.println(sum);
+            // Serial.print("sum: ");
+            // Serial.println(sum);
               sum = 0; // Reset sum for the next average calculation 
 
             }
@@ -119,14 +163,13 @@ void Task40ms(void *parameters) {
             {
             // Read sensor data and store it in the array
             sensors.listofSensorsReadings[sensors.counter_readings] = sensors_readADC();
-
-           
             sensors.counter_readings++;
 
-             if (sensors.counter_readings % 10 == 0)
+            if (sensors.counter_readings % 10 == 0)
             {
                 max_in_second = true; // Set flag to indicate maximum readings in a second have been reached
             }
+
             sensors.readingComplete = false; // Reset flag after reading
             //Serial.println("sensors.counter_readings:  " + String(sensors.counter_readings));
         } else {
@@ -177,13 +220,11 @@ void Task1sec(void *parameters) {
         }
 
 
-
-
         currentTime = millis(); 
         timedifference = currentTime - operationStartTime; // Calculate time difference since operation start
-        Serial.println("currentTime: " + String(currentTime));
-        Serial.println("Operation start time: " + String(operationStartTime));
-        Serial.println("millis " + String(millis()));
+        // Serial.println("currentTime: " + String(currentTime));
+        // Serial.println("Operation start time: " + String(operationStartTime));
+        // Serial.println("millis " + String(millis()));
         Serial.println("Timedifference: " + String(timedifference));
         Serial.println("CounterofAllreading  " + String(sensors.counterAllreadings));
         if (sensors.counterAllreadings >= 3) {
@@ -202,13 +243,40 @@ void Task1sec(void *parameters) {
            
         }
     }
+
+
+
+
         // Check if operation time has exceeded
         if(timedifference >= OPERATION_TIME) {
             Serial.println("Operation time exceeded, going to sleep");
             sensors.fullReadingProcess_Complete = false;
             shouldEnterSleep = true; 
             // Code after goToSleep() won't execute as device enters deep sleep
+
+            for (int i = 0; i <= RTC_getReadingIndex()  ; i++) {
+                
+                Serial.println("ALL reading History " + String(i + 1) + ": " + String(RTC_get_Reading_History(i)));
+            }
+     
+
+
         }
+
+        //         // Send periodic updates via Bluetooth
+        // if (sensors.fullReadingProcess_Complete) {
+        //     SerialBT.println("Sensor Update:");
+        //     SerialBT.printf("Time: %lu ms\n", currentTime);
+        //     for (int i = 0; i < 3; i++) {
+        //         SerialBT.printf("Sensor %d: %s\n", 
+        //             i + 1, 
+        //             sensors_getSoilStateString(sensors.listofsoilStates[i]));
+        //     }
+        // }
+        
+        // // Handle incoming Bluetooth messages
+        // handleBluetoothMessages();
+
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -223,6 +291,9 @@ void setup() {
      delay(10); // Give time for sensor initialization
     Serial.println("Sensor initialization complete");
 
+    //  // Initialize Bluetooth
+    // SerialBT.begin(DEVICE_NAME);
+    // Serial.println("Bluetooth Started. Device name: " + String(DEVICE_NAME));
 
     // Record start time
     shouldEnterSleep = false; // Initialize sleep flag
@@ -230,12 +301,14 @@ void setup() {
     currentTime = 0; // Reset current time
     operationStartTime = millis();
     esp_sleep_enable_timer_wakeup(SLEEP_TIME);
+
     // Check if this is a wake up from deep sleep
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     if(wakeup_reason == ESP_SLEEP_WAKEUP_TIMER) {
         Serial.println("Woken up from deep sleep");
     } else {
         Serial.println("First boot");
+        RTC_init(); // Initialize RTC data
     }
 
     pinMode(BUILTIN_LED, OUTPUT);

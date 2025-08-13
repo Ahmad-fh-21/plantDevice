@@ -91,7 +91,7 @@ const char* sensors_getSoilStateString(uint8_t soilState) {
 }
 
 // Function to get the soil state based on sensor readings
-uint16_t sensors_getSoilState(sensors_struct_t *sensors) {
+uint8_t sensors_getSoilState(sensors_struct_t *sensors) {
     // Get the average of the sensor readings
     uint16_t averageReading = 0;
     uint8_t soilstate = 0; // Variable to store soil state
@@ -101,6 +101,11 @@ uint16_t sensors_getSoilState(sensors_struct_t *sensors) {
     }
     averageReading /= 5;
 
+   
+    // Save readings to RTC
+
+    RTC_saveReading(averageReading);
+    
     //Serial.print("Average reading: ");
     //Serial.println(averageReading);
 

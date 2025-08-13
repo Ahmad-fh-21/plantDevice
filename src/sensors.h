@@ -2,7 +2,7 @@
 #define SENSORS_H
 
 #include <Arduino.h>
-
+#include <RTC_handler.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +54,7 @@ sensors_struct_t sensors_init();
 void sensors_setPower(bool state);
 float sensors_readADC(void);
 const char* sensors_getSoilStateString(uint8_t soilState);
-uint16_t sensors_getSoilState(sensors_struct_t *sensors);
+uint8_t sensors_getSoilState(sensors_struct_t *sensors);
 
 #ifdef __cplusplus
 }
