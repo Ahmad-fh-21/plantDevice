@@ -23,12 +23,18 @@ sensors_struct_t sensors ;
 
 // Sleep parameters
 const uint64_t OPERATION_TIME =   17500;  // 16.5 seconds in milliseconds
-const uint64_t SLEEP_TIME =  60000000;      // 60 seconds in milliseconds
+const uint64_t SLEEP_TIME =  1000000 /*60000000 */;      // 60 seconds in milliseconds
 uint32_t operationStartTime = 0;
 bool shouldEnterSleep = false;
 uint32_t currentTime = 0;
 uint32_t timedifference = 0;
 bool max_in_second = false; // Flag to indicate if maximum readings in a second have been reached
+bool measurment_ongoing = true; // Flag to indicate if measurement is ongoing
+
+
+uint8_t watering = 0;
+bool watering_ongoing = false;
+
 // Task handles
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
@@ -70,7 +76,7 @@ void goToSleep() {
     
  
     Task1Handle = NULL;
-    // Task2Handle = NULL;
+     Task2Handle = NULL;
     // Task3Handle = NULL;
     Task4Handle = NULL;
     
@@ -126,7 +132,7 @@ void calculateAverage(sensors_struct_t *sensors) {
         float sum = 0;
        
         for (int i = 0; i < sensors->counter_readings; i++) {
-             Serial.println("Reading " + String(i) + ": " + String(sensors->listofSensorsReadings[i]));
+            // Serial.println("Reading " + String(i) + ": " + String(sensors->listofSensorsReadings[i]));
             sum += sensors->listofSensorsReadings[i];
             if ((i+1) % 10 == 0 && i != 0) {
               sensors->averageIndex_readings[i / 10] = sum /  10; // Store average every 10 readings
@@ -149,6 +155,9 @@ void calculateAverage(sensors_struct_t *sensors) {
     }
     
 }
+
+
+
 
 // Task functions
 // the time needed to measure the soil moisture is 20 ms each time , each second is 10 measurements
@@ -186,12 +195,81 @@ void Task40ms(void *parameters) {
     vTaskDelete(NULL); // Delete this task after completion
 }
 
-// void Task2(void *parameters) {
-//     while(tasksRunning ) {
-//         Serial.println("Task 2 running - 200ms");
-//         vTaskDelay(pdMS_TO_TICKS(200));
-//     }
-// }
+
+
+float motor_handle_watering(void)
+{
+    uint32_t sum = 0;
+    uint8_t new_Start_index = 0;
+    
+    float wateringTime = 0.0;
+    new_Start_index = RTC_getReadingIndex() - 1 ; // Start from the last 9 readings
+
+    for (int i = new_Start_index; i > ( new_Start_index - 24); i--) 
+    {
+        sum += RTC_get_Reading_History(i);
+        Serial.print(i + 1);
+        Serial.print(": ");
+        Serial.println(RTC_get_Reading_History(i));
+
+    }
+
+    sum /= 24; // Calculate average of last 3 days readings
+    Serial.println("Average of last 3 days readings: " + String(sum));
+    
+    if( motor_get_watering_time(sum) >= 5) 
+    {
+        measurment_ongoing = false; // Stop measurements during watering
+        Serial.println("before old" + String(RTC_getBootCount(false)) + "new boot count" + String(RTC_getBootCount(true)));
+        wateringTime = motor_get_watering_time(sum);
+        Serial.println("Watering time: " + String(wateringTime) + " seconds");
+        Serial.println("after old" + String(RTC_getBootCount(false)) + "new boot count" + String(RTC_getBootCount(true)));
+    } 
+    else 
+    {
+       // 
+        wateringTime = 0; // No watering needed
+    }
+    return wateringTime;
+}
+
+
+
+
+
+
+
+void Task500ms(void *parameters) {
+    while(tasksRunning ) {
+        
+        if (watering_ongoing == true)
+        {
+            digitalWrite(BUILTIN_LED, HIGH);
+            
+            if (watering <= 0)  
+            {
+                digitalWrite(BUILTIN_LED, LOW);
+                watering_ongoing = false; // Reset flag when watering is complete
+                Serial.println("Watering complete");
+                
+            }
+            else
+            {
+                watering--;
+            }
+        }
+
+        else 
+        {
+           
+        }
+         
+
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    vTaskDelete(NULL); // Delete this task after completion
+}
 
 // void Task3(void *parameters) {
 //     while(tasksRunning ) {
@@ -200,23 +278,75 @@ void Task40ms(void *parameters) {
 //     }
 // }
 
+void main_reading_logic()
+{
+    if (sensors.counter_readings == 50  )
+    {
+        sensors.readingComplete = true; // Set flag when readings are complete
+        calculateAverage(&sensors); // Calculate the average of the readings
+        sensors.listofsoilStates[sensors.counterAllreadings] = sensors_getSoilState(&sensors); // Get the soil state based on the readings
+        sensors.counterAllreadings++; // Increment the counter for all readings
+        sensors.counter_readings = 0; // Reset counter for next readings
+    }
+    else if (max_in_second == true) 
+    {
+        max_in_second = false; // Reset counter if it exceeds the array size
+    }
+    else 
+    {
+        // empty else    
+    }
+
+    if (sensors.counterAllreadings >= 3) 
+    {
+        sensors.fullReadingProcess_Complete = true; 
+
+        // Serial.println("Full reading process complete");
+        // Serial.println("Soil states for each sensor:");
+        // for (int i = 0; i < 3; i++) 
+        // {
+        //     Serial.print("state ");
+        //     Serial.print(i + 1);
+        //     Serial.print(": ");
+        //     Serial.print(sensors.listofsoilStates[i]);   
+        //     Serial.print(": Soil State :  ");
+        //     Serial.println(sensors_getSoilStateString(sensors.listofsoilStates[i])); 
+       
+        // }
+    }
+
+}
+
 void Task1sec(void *parameters) {
     while(tasksRunning ) {
+    if (watering_ongoing == false && (watering == 0 || watering < 0)) 
+    {
 
-        if (sensors.counter_readings == 50  )
+        
+
+        if (motor_check_if_watering_needed() == true) 
         {
-             
-            sensors.readingComplete = true; // Set flag when readings are complete
-            calculateAverage(&sensors); // Calculate the average of the readings
-            sensors.listofsoilStates[sensors.counterAllreadings] = sensors_getSoilState(&sensors); // Get the soil state based on the readings
-            sensors.counterAllreadings++; // Increment the counter for all readings
-            sensors.counter_readings = 0; // Reset counter for next readings
-        }
-        else if (max_in_second == true) {
-            max_in_second = false; // Reset counter if it exceeds the array size
-        }
-        else {
-            
+            Serial.println(" 3 days passed, watering is checked");
+            if (motor_handle_watering() > 0)
+            {
+                watering = 2 * motor_handle_watering();
+                // Handle watering logic
+                watering_ongoing = true; // Set flag to indicate watering is ongoing
+            }
+            else
+            {
+                RTC_setBootCount((RTC_getBootCount(false) - 3 ),true); // delay the next check for 1 day
+                watering = 0; // No watering needed
+                watering_ongoing = false; // Reset flag when no watering is needed
+                Serial.println("No watering needed at this time");
+            }
+
+            Serial.println("Watering started for " + String(watering) + " seconds / 2");
+        } 
+
+        if (measurment_ongoing == true)
+        {
+            main_reading_logic(); // Call the main reading logic function
         }
 
 
@@ -226,40 +356,20 @@ void Task1sec(void *parameters) {
         // Serial.println("Operation start time: " + String(operationStartTime));
         // Serial.println("millis " + String(millis()));
         Serial.println("Timedifference: " + String(timedifference));
-        Serial.println("CounterofAllreading  " + String(sensors.counterAllreadings));
-        if (sensors.counterAllreadings >= 3) {
-        
-        sensors.fullReadingProcess_Complete = true; 
-
-        Serial.println("Full reading process complete");
-        Serial.println("Soil states for each sensor:");
-        for (int i = 0; i < 3; i++) {
-            Serial.print("state ");
-            Serial.print(i + 1);
-            Serial.print(": ");
-            Serial.print(sensors.listofsoilStates[i]);   
-            Serial.print(": Soil State :  ");
-            Serial.println(sensors_getSoilStateString(sensors.listofsoilStates[i])); 
-           
-        }
-    }
-
-
+        //Serial.println("CounterofAllreading  " + String(sensors.counterAllreadings));
 
 
         // Check if operation time has exceeded
-        if(timedifference >= OPERATION_TIME) {
+        if(timedifference >= OPERATION_TIME  ) {
             Serial.println("Operation time exceeded, going to sleep");
             sensors.fullReadingProcess_Complete = false;
             shouldEnterSleep = true; 
             // Code after goToSleep() won't execute as device enters deep sleep
 
-            for (int i = 0; i <= RTC_getReadingIndex()  ; i++) {
+            for (int i = 0; i < RTC_getReadingIndex()  ; i++) {
                 
-                Serial.println("ALL reading History " + String(i + 1) + ": " + String(RTC_get_Reading_History(i)));
-            }
-     
-
+                Serial.println("ALL reading History " + String(i ) + ": " + String(RTC_get_Reading_History(i)));
+            }    
 
         }
 
@@ -276,8 +386,9 @@ void Task1sec(void *parameters) {
         
         // // Handle incoming Bluetooth messages
         // handleBluetoothMessages();
-
-
+        
+    }
+       
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     vTaskDelete(NULL); // Delete this task after completion
@@ -287,8 +398,8 @@ void setup() {
     Serial.begin(115200);
     delay(1000); // Give time for serial to initialize
     
-     sensors = sensors_init();
-     delay(10); // Give time for sensor initialization
+    sensors = sensors_init();
+    delay(10); // Give time for sensor initialization
     Serial.println("Sensor initialization complete");
 
     //  // Initialize Bluetooth
@@ -311,8 +422,11 @@ void setup() {
         RTC_init(); // Initialize RTC data
     }
 
+    RTC_incrementBootCount(); // Increment boot count
+
+
     pinMode(BUILTIN_LED, OUTPUT);
-    digitalWrite(BUILTIN_LED, HIGH);
+    //digitalWrite(BUILTIN_LED, HIGH);
 
 
 
@@ -326,14 +440,14 @@ void setup() {
         &Task1Handle    // Task handle
     );
 
-    // xTaskCreate(
-    //     Task2,
-    //     "Task2",
-    //     2048,
-    //     NULL,
-    //     1,
-    //     &Task2Handle
-    // );
+    xTaskCreate(
+        Task500ms,
+        "Task500ms",
+        2048,
+        NULL,
+        3,
+        &Task2Handle
+    );
 
     // xTaskCreate(
     //     Task3,

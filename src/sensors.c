@@ -110,23 +110,23 @@ uint8_t sensors_getSoilState(sensors_struct_t *sensors) {
     //Serial.println(averageReading);
 
     // Determine soil state based on the average reading
-    if (averageReading >= VeryDrySoil) 
+    if (averageReading >= VERY_DRY_SOIL_THRESHOLD ) 
     {
         soilstate = VERY_DRY_SOIL;
     } 
-    else if (averageReading >= DrySoil && averageReading < VeryDrySoil) 
+    else if (averageReading >= DRY_SOIL_THRESHOLD   && averageReading < VERY_DRY_SOIL_THRESHOLD ) 
     {
         soilstate = DRY_SOIL;
     } 
-    else if (averageReading >= WetSoil && averageReading < DrySoil) 
+    else if (averageReading >=   WET_SOIL_THRESHOLD  && averageReading < DRY_SOIL_THRESHOLD ) 
     {
         soilstate = MOIST_SOIL;
     }
-    else if (averageReading >= VeryWetSoil && averageReading < WetSoil)
+    else if (averageReading >= VERY_WET_SOIL_THRESHOLD && averageReading < WET_SOIL_THRESHOLD )
     {
         soilstate = WET_SOIL;
     }
-    else if (averageReading < VeryWetSoil && averageReading >= 0) 
+    else if (averageReading < VERY_WET_SOIL_THRESHOLD && averageReading >= 0) 
     {
         soilstate = VERY_WET_SOIL;
     }

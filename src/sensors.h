@@ -8,22 +8,24 @@
 extern "C" {
 #endif
 
-// Soil moisture thresholds
-const uint16_t VeryDrySoil = 3900; // Very dry soil threshold
-const uint16_t DrySoil = 3000; // Dry soil threshold
-const uint16_t WetSoil = 2000; // Wet soil threshold
-const uint16_t VeryWetSoil = 1000; // Moist soil threshold
 
-// Pin definitions
-const int ADC_PIN = 34;  // GPIO34 for analog input
-const int SENSOR_POWER = 25;  // GPIO25 for sensor power control & Supply
+// Soil moisture thresholds - changed to #define
+#define VERY_DRY_SOIL_THRESHOLD  3900
+#define DRY_SOIL_THRESHOLD       3000
+#define WET_SOIL_THRESHOLD       2000
+#define VERY_WET_SOIL_THRESHOLD  1000
 
-// ADC variables
-const int ADC_READINGS = 10;
 
-#define MAX_READINGS  50 // Maximum number of readings to store
-#define AVERAGE_READINGS  5 // Number of readings to average
-#define SOIL_STATES 3 // Number of soil states to track
+
+// Pin definitions - changed to #define
+#define ADC_PIN         34   // GPIO34 for analog input
+#define SENSOR_POWER    25   // GPIO25 for sensor power control & Supply
+#define ADC_READINGS    10   // Number of ADC readings to average
+
+
+#define MAX_READINGS       50 // Maximum number of readings to store
+#define AVERAGE_READINGS   5  // Number of readings to average
+#define SOIL_STATES        3  // Number of soil states to track
 
 
 
