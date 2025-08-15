@@ -54,6 +54,7 @@ bool motor_check_if_watering_needed(void)
     return is_watering;
 }
 
+// Function to get watering time based on soil state
 float motor_get_watering_time(uint16_t averageReading)
 {   
     float wateringTime = 0.0;

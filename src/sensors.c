@@ -1,80 +1,77 @@
 #include <sensors.h>
 
 
-// // main Variables
-// float listofSensorsReadings[50] = {}; // Array to store sensor readings
-// int averageIndex_readings[5] = {}; // Index for the next sensor reading
-// int counter_readings = 0; // Counter for the number of readings
-// bool readingComplete = false; // Flag to indicate if readings are complete
-// bool fullReadingProcess_Complete = false; // Counter for seconds 
-// uint8_t counterAllreadings = 0; // Counter for all readings
-
-
-
-// uint8_t listofsoilStates[3] = {}; // Array to store soil states for each sensor
 
 // Initialize sensor power control
-sensors_struct_t sensors_init() {
+sensors_struct_t sensors_init() 
+{
     sensors_struct_t sensors;
     pinMode(SENSOR_POWER, OUTPUT);
-    digitalWrite(SENSOR_POWER, LOW);  // Start with sensor off
+    digitalWrite(SENSOR_POWER, LOW);              // Start with sensor off
 
-        // Configure ADC for 12-bit resolution (0-4095)
-    analogReadResolution(12);  // Set ADC resolution to 12 bits
-    analogSetAttenuation(ADC_11db);  // Set ADC attenuation for 3.3V range
-    sensors.counter_readings = 0;  // Initialize reading counter
-    sensors.readingComplete = false;  // Initialize reading complete flag
+    // Configure ADC for 12-bit resolution (0-4095)
+    analogReadResolution(12);                     // Set ADC resolution to 12 bits
+    analogSetAttenuation(ADC_11db);               // Set ADC attenuation for 3.3V range
+    sensors.counter_readings = 0;                 // Initialize reading counter
+    sensors.readingComplete = false;              // Initialize reading complete flag
     sensors.fullReadingProcess_Complete = false;  // Initialize full reading process flag
-    sensors.counterAllreadings = 0;  // Initialize all readings counter
+    sensors.counterAllreadings = 0;               // Initialize all readings counter
 
     for(int i = 0; i < MAX_READINGS; i++) 
     {
-        sensors.listofSensorsReadings[i] = 0;  // Initialize sensor readings array
+        sensors.listofSensorsReadings[i] = 0;     // Initialize sensor readings array
     }
     for(int i = 0; i < AVERAGE_READINGS; i++) 
     {
-        sensors.averageIndex_readings[i] = 0;  // Initialize average index readings
+        sensors.averageIndex_readings[i] = 0;     // Initialize average index readings
     }
     for(int i = 0; i < 3; i++) 
     {
-        sensors.listofsoilStates[i] = 0;  // Initialize soil states array
+        sensors.listofsoilStates[i] = 0;          // Initialize soil states array
     }
     
     return sensors;
 }
 
 // Function to control sensor power
-void sensors_setPower(bool state) {
+void sensors_setPower(bool state) 
+{
     digitalWrite(SENSOR_POWER, state);
-    if(state) {
+
+    if(state) 
+    {
         delay(10);  // Give sensor time to stabilize
     }
 }
 
 
 // Function to read and average ADC values
-extern float sensors_readADC(void) {
-
+extern float sensors_readADC(void) 
+{
     // Power up sensor before reading
     sensors_setPower(HIGH);
 
     // Take multiple readings and average them
-    uint32_t sum = 0;  // Using uint32_t to prevent overflow
-    for(int i = 0; i < ADC_READINGS; i++) {
-        sum += analogRead(ADC_PIN);  // Now reads in 12-bit range (0-4095)
-        delay(1);  // Small delay between readings
+    uint32_t sum = 0;                          // Using uint32_t to prevent overflow
+    
+    for(int i = 0; i < ADC_READINGS; i++) 
+    {
+        sum += analogRead(ADC_PIN);            // Now reads in 12-bit range (0-4095)
+        delay(1);                              // Small delay between readings
     }
+
     int adcValue = sum / ADC_READINGS;
     
-    // Convert to voltage (12-bit resolution: 4095 = 3.3V)
-   // float voltage = (adcValue * 3.3) / 4095.0;
-    sensors_setPower(LOW);  // Turn off sensor after reading
+    sensors_setPower(LOW);                     // Turn off sensor after reading
+    
     return adcValue;
 }
 
 // // Function to print soil state based on sensor reading
-const char* sensors_getSoilStateString(uint8_t soilState) {
-    switch (soilState) {
+const char* sensors_getSoilStateString(uint8_t soilState) 
+{
+    switch (soilState) 
+    {
         case VERY_DRY_SOIL:
             return "Very Dry Soil";
         case DRY_SOIL:
@@ -96,19 +93,16 @@ uint8_t sensors_getSoilState(sensors_struct_t *sensors) {
     uint16_t averageReading = 0;
     uint8_t soilstate = 0; // Variable to store soil state
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < AVERAGE_READINGS ; i++) 
+    {
         averageReading += sensors->listofSensorsReadings[i];
     }
-    averageReading /= 5;
 
-   
+    averageReading /= AVERAGE_READINGS;
+
     // Save readings to RTC
-
     RTC_saveReading(averageReading);
     
-    //Serial.print("Average reading: ");
-    //Serial.println(averageReading);
-
     // Determine soil state based on the average reading
     if (averageReading >= VERY_DRY_SOIL_THRESHOLD ) 
     {
@@ -132,4 +126,32 @@ uint8_t sensors_getSoilState(sensors_struct_t *sensors) {
     }
 
     return soilstate;
+}
+
+// Function to calculate the average of sensor readings
+void calculateAverage(sensors_struct_t *sensors) 
+{
+    if (sensors->readingComplete == true && sensors->counter_readings > 0) 
+    {
+        float sum = 0;
+       
+        for (int i = 0; i < sensors->counter_readings; i++) 
+        {
+            // Serial.println("Reading " + String(i) + ": " + String(sensors->listofSensorsReadings[i]));
+            sum += sensors->listofSensorsReadings[i];
+            if ((i+1) % 10 == 0 && i != 0) 
+            {
+                sensors->averageIndex_readings[i / 10] = sum /  10; // Store average every 10 readings
+                // Serial.print("sum: ");
+                // Serial.println(sum);
+                sum = 0; // Reset sum for the next average calculation 
+
+            }
+        }
+    } 
+    else 
+    {
+        //Serial.println("No readings to average.");
+    }
+    
 }
