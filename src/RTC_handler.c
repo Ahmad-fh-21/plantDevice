@@ -19,7 +19,8 @@ void RTC_init() {
 }
 
 void RTC_incrementBootCount(void) {
-    if (RTC_bootCount < 65535) { // Maximum value for uint16_t
+    if (RTC_bootCount < 65535) 
+    { // Maximum value for uint16_t
         RTC_bootCount++;
     } else
     {
@@ -42,15 +43,21 @@ void RTC_setBootCount(int count, bool old )
 }
 
 int RTC_getBootCount(bool old) {
-    if (old) {
+    if (old) 
+    {
         return RTC_bootCountOld; // Return the old boot count
     }
-    return RTC_bootCount;
+    else 
+    {
+        return RTC_bootCount; // Return the current boot count
+    }
+
 }
 
 // Function to set and get RTC_readingIndex
 void RTC_setReadingIndex(int index) {
-    if (index >= 0 && index < MAX_READINGS_INDEX) {
+    if (index >= 0 && index < MAX_READINGS_INDEX) 
+    {
         RTC_readingIndex = index;
     }
 }
@@ -59,7 +66,8 @@ int RTC_getReadingIndex() {
 }
 
 void RTC_clearReadings() {
-    for (int i = 0; i < MAX_READINGS_INDEX; i++) {
+    for (int i = 0; i < MAX_READINGS_INDEX; i++) 
+    {
         RTC_SoilStates[i] = 0; // Clear all readings
     }
     RTC_readingIndex = 0; // Reset index
@@ -68,7 +76,8 @@ void RTC_clearReadings() {
 
 
 uint16_t RTC_get_Reading_History( uint8_t index) {
-    if ( index < MAX_READINGS_INDEX && index >= 0) {
+    if ( index < MAX_READINGS_INDEX && index >= 0) 
+    {
         return RTC_SoilStates[index];
     } else {
         //RTC_setReadingIndex(0); // Reset index if out of bounds
@@ -77,16 +86,20 @@ uint16_t RTC_get_Reading_History( uint8_t index) {
 }
     
 //  function to save readings into RTC memory
-void RTC_saveReading(uint16_t soilState) {
-    if (RTC_readingIndex < MAX_READINGS_INDEX && RTC_readingIndex >= 0) {
+void RTC_saveReading(uint16_t soilState) 
+{
+    if (RTC_readingIndex < MAX_READINGS_INDEX && RTC_readingIndex >= 0) 
+    {
         RTC_SoilStates[RTC_readingIndex] = soilState;
         RTC_readingIndex++;
     }
-    else if (RTC_readingIndex >= MAX_READINGS_INDEX) {
+    else if (RTC_readingIndex >= MAX_READINGS_INDEX) 
+    {
         RTC_readingIndex = 0; // Reset index if it exceeds the maximum
         RTC_SoilStates[RTC_readingIndex] = soilState; // Save the new reading at index 0
     }
-    else {
+    else 
+    {
         // Handle error: index out of bounds
        
     }
