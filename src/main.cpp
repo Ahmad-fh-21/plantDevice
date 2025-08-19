@@ -3,7 +3,7 @@
 #include <motor.h>
 #include <BluetoothSerial.h>
 #include <RTC_handler.h>
-
+#include <wifi_handler.h>
 
 // struct to hold sensor data
 sensors_struct_t sensors ;
@@ -237,6 +237,18 @@ void setup()
     Serial.begin(115200);
     delay(1000); // Give time for serial to initialize
     
+
+    // Initialize WiFi
+    wifi_init();
+    
+    // Check connection status
+    if (wifi_isConnected()) {
+        const wifi_status_t* status = wifi_getStatus();
+        Serial.printf("Connected to: %s\n", status->ssid);
+    }
+
+
+
     // Record start time
     shouldEnterSleep = false; // Initialize sleep flag
     timedifference = 0; // Reset time difference
