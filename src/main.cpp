@@ -8,6 +8,17 @@
 // struct to hold sensor data
 sensors_struct_t sensors ;
 
+
+enum {
+    idle = 0,
+    reading_ongoing = 1,
+    reading_finished = 2,
+    just_waked_up = 3
+};
+uint8_t operation_State = 0; // Variable to hold operation state
+
+
+
 // Sleep parameters
 const uint64_t OPERATION_TIME =   3500;  // 11 seconds in milliseconds
 const uint64_t SLEEP_TIME =  1000000 /*60000000 */;      // 60 seconds in milliseconds
@@ -15,12 +26,12 @@ uint32_t operationStartTime = 0;
 bool shouldEnterSleep = false;
 uint32_t currentTime = 0;
 uint32_t timedifference = 0;
-bool max_in_second = false; // Flag to indicate if maximum readings in a second have been reached
-bool measurment_ongoing = true; // Flag to indicate if measurement is ongoing
+//bool max_in_second = false; // Flag to indicate if maximum readings in a second have been reached
+//bool measurment_ongoing = true; // Flag to indicate if measurement is ongoing
 
 
-uint8_t watering = 0;
-bool watering_ongoing = false;
+// uint8_t watering = 0;
+// bool watering_ongoing = false;
 
 // Task handles
 TaskHandle_t Task1Handle = NULL;
@@ -80,7 +91,7 @@ void Task40ms(void *parameters)
 }
 
 
-
+/*
 float motor_handle_watering(void)
 {
     uint32_t sum = 0;
@@ -117,7 +128,7 @@ float motor_handle_watering(void)
     return wateringTime;
 }
 
-
+*/
 
 
 void Task500ms(void *parameters) 
@@ -135,36 +146,11 @@ void Task500ms(void *parameters)
         {
             
         }
- 
-        // if (watering_ongoing == true)
-        // {
-        //     digitalWrite(BUILTIN_LED, HIGH);
-        //     motor_startMotor(); // Start the motor
-            
-        //     if (watering <= 0)  
-        //     {
-        //         digitalWrite(BUILTIN_LED, LOW);
-        //         watering_ongoing = false; // Reset flag when watering is complete
-        //         Serial.println("Watering complete");
-
-        //         motor_stopMotor(); // Stop the motor
-        //         currentTime = millis(); 
-        //         timedifference = currentTime - operationStartTime; 
-        //         Serial.println("Timedifference: " + String(timedifference));
-        //         goToSleep(); // Go to sleep after watering is complete
-                
-        //     }
-        //     else
-        //     {
-        //         watering--;
-        //     }
-        // }
-
-        // else 
-        // {
-           
-        // }
-         
+        if (shouldEnterSleep == true) 
+        {
+            goToSleep();
+        }
+   
         vTaskDelay(pdMS_TO_TICKS(500));
     }
     vTaskDelete(NULL); // Delete this task after completion
@@ -178,14 +164,7 @@ void Task500ms(void *parameters)
 // }
 
 
-#define TOTAL_READING_ROUTINE 4 // this number which defines hoe many seconds the system repeats the reading routine
 
-uint8_t operation_State = 0; // Variable to hold operation state
-enum {
-    idle = 0,
-    reading_ongoing = 1,
-    reading_finished = 2
-};
 void Task1sec(void *parameters) 
 {
     while(tasksRunning ) 
@@ -195,16 +174,28 @@ void Task1sec(void *parameters)
         {
             if ( sensors.counterAllreadings < TOTAL_READING_ROUTINE)
             {
+            if (operation_State == just_waked_up )
+            {
+                reading_state = reading;
+                operation_State = reading_ongoing; // Set state to reading ongoing
+               // break; // Exit the loop to start reading
+            } 
+            else
+            {
                 Serial.println("Reading complete, processing readings... num of all reading :" + String(sensors.counterAllreadings));
                 reading_state = reading; // Set state to read again if the ROUTINE is not finished
                 sensors.counterAllreadings++; // Increment counter for all readings
-                //sensors.readingComplete = true;         
+                //sensors.readingComplete = true;  
+            }
+
+       
             }
             if (sensors.counterAllreadings  == TOTAL_READING_ROUTINE) // the number of total Routines is achived , turn off reading
             {
                 sensors.counter_readings = 0;
                 sensors.counterAllreadings = 0;
                 operation_State = reading_finished; // Set state to finished
+                shouldEnterSleep = true; 
                 for (int i = 0; i < RTC_getReadingIndex()  ; i++) 
                 {
                     Serial.println("ALL reading History " + String(i ) + ": " + String(RTC_get_Reading_History(i)));
@@ -231,23 +222,7 @@ void Task1sec(void *parameters)
             {
                 Serial.println("boot count: " + String(RTC_getBootCount(false)) + " new boot count: " + String(RTC_getBootCount(true)));
                 Serial.println("Operation time exceeded, going to sleep");
-                //sensors.fullReadingProcess_Complete = false;
                 shouldEnterSleep = true; 
-                // Code after goToSleep() won't execute as device enters deep sleep
-
-                // for (int i = 0; i < sizeof (sensors.averageIndex_readings) / sizeof(sensors.averageIndex_readings[0]); i++) 
-                // {
-                //     Serial.print("Average reading for sensor ");
-                //     Serial.print(i + 1);
-                //     Serial.print(": ");
-                //     Serial.println(sensors.averageIndex_readings[i]);
-                // }
-                // for (int i = 0; i < RTC_getReadingIndex()  ; i++) {
-                    
-                //     Serial.println("ALL reading History " + String(i ) + ": " + String(RTC_get_Reading_History(i)));
-                // }    
-               // vTaskDelay(pdMS_TO_TICKS(100)); // Delay to allow serial output to complete
-
             }
             
         
@@ -283,6 +258,7 @@ void setup()
         RTC_init(); // Initialize RTC data
     }
 
+    operation_State = just_waked_up; // Set operation state to just woken up
     RTC_incrementBootCount(); // Increment boot count
 
 
@@ -307,12 +283,9 @@ void setup()
 
 void loop() {
  
-    if (shouldEnterSleep == true) 
-    {
-        goToSleep();
-    }
+
     
-    vTaskDelay(pdMS_TO_TICKS(100));
+   // vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 // Function to initialize tasks
@@ -392,7 +365,7 @@ void goToSleep(void)
 }
 
 
-
+/*
 // Function to handle motor watering logic - called in task 1 sec
 static void main_handle_motor_watering_logic()
 {
@@ -416,5 +389,5 @@ static void main_handle_motor_watering_logic()
             Serial.println("Watering started for " + String(watering) + " seconds / 2");
         } 
 }
-
+*/
 

@@ -15,6 +15,13 @@ extern "C" {
 #define WET_SOIL_THRESHOLD       2000
 #define VERY_WET_SOIL_THRESHOLD  1000
 
+
+
+
+
+
+#define TOTAL_READING_ROUTINE 3 // this number which defines hoe many seconds the system repeats the reading routine
+
 #define ADC_PIN         34   // GPIO34 for analog input
 #define SENSOR_POWER    25   // GPIO25 for sensor power control & Supply
 #define ADC_READINGS    10   // Number of ADC readings to average
@@ -27,15 +34,15 @@ typedef struct
 {
     // main Variables
     float    listofSensorsReadings[MAX_READINGS]; // Array to store sensor readings
-    uint16_t averageIndex_readings[AVERAGE_READINGS]; // Index for the next sensor reading
+    //uint16_t averageIndex_readings[AVERAGE_READINGS]; // Index for the next sensor reading
     uint8_t  counter_readings ; // Counter for the number of readings
-    bool     readingComplete ; // Flag to indicate if readings are complete
-    bool     fullReadingProcess_Complete ; // Counter for seconds 
+    //bool     readingComplete ; // Flag to indicate if readings are complete
+    //bool     fullReadingProcess_Complete ; // Counter for seconds 
     uint8_t  counterAllreadings ; // Counter for all readings
     uint8_t  listofsoilStates[SOIL_STATES] ; // Array to store soil states for each sensor
 
-    uint8_t  averageIndex ; // Index for the next average reading
-    bool     readingInProgress_in_1_sec; // Flag to indicate if a reading is in progress
+    //uint8_t  averageIndex ; // Index for the next average reading
+    //bool     readingInProgress_in_1_sec; // Flag to indicate if a reading is in progress
 
 }sensors_struct_t;
 

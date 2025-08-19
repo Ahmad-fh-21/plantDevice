@@ -14,19 +14,19 @@ sensors_struct_t sensors_init()
     analogSetAttenuation(ADC_11db);               // Set ADC attenuation for 3.3V range
     sensors.counter_readings = 0;                 // Initialize reading counter
     //sensors.readingComplete = false;              // Initialize reading complete flag
-    sensors.fullReadingProcess_Complete = false;  // Initialize full reading process flag
+   // sensors.fullReadingProcess_Complete = false;  // Initialize full reading process flag
     sensors.counterAllreadings = 0;               // Initialize all readings counter
-    sensors.readingInProgress_in_1_sec = false;   // Initialize reading in progress flag
-    sensors.averageIndex = 0;                     // Initialize average index
+    //sensors.readingInProgress_in_1_sec = false;   // Initialize reading in progress flag
+    //sensors.averageIndex = 0;                     // Initialize average index
 
     for(int i = 0; i < MAX_READINGS; i++) 
     {
         sensors.listofSensorsReadings[i] = 0;     // Initialize sensor readings array
     }
-    for(int i = 0; i < AVERAGE_READINGS; i++) 
-    {
-        sensors.averageIndex_readings[i] = 0;     // Initialize average index readings
-    }
+    // for(int i = 0; i < AVERAGE_READINGS; i++) 
+    // {
+    //     sensors.averageIndex_readings[i] = 0;     // Initialize average index readings
+    // }
     for(int i = 0; i < 3; i++) 
     {
         sensors.listofsoilStates[i] = 0;          // Initialize soil states array
@@ -129,37 +129,6 @@ uint8_t sensors_getSoilState(sensors_struct_t *sensors) {
 
     return soilstate;
 }
-
-
-
-
-
-
-// // Function to calculate the average of sensor readings
-// void calculateAverage(sensors_struct_t *sensors) 
-// {
- 
-//         float sum = 0;
-       
-//         for (int i = 0; i < 30 ; i++) 
-//         {
-//             //Serial.println("Reading " + String(i) + ": " + String(sensors->listofSensorsReadings[i]));
-//             sum += sensors->listofSensorsReadings[i];
- 
-//             if ((i+1) % 10 == 0 && i != 0) 
-//             {
-//                 sum /= 10; // Calculate average for every 10 readings
-//                 sensors->averageIndex_readings[i / 10] = sum ; // Store average every 10 readings
-
-//                 // Save readings to RTC
-//                 RTC_saveReading(sum);
-//                 sum = 0; // Reset sum for the next average calculation
-
-//             }
-//         }
-
-    
-// }
 
 // Function to calculate the average of sensor readings
 void calculateAverage(sensors_struct_t *sensors) 
