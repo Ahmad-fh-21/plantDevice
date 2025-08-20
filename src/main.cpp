@@ -4,7 +4,7 @@
 #include <BluetoothSerial.h>
 #include <RTC_handler.h>
 #include <wifi_handler.h>
-
+#include <influxDB_handler.h>
 // struct to hold sensor data
 sensors_struct_t sensors ;
 
@@ -17,11 +17,12 @@ enum {
 };
 uint8_t operation_State = 0; // Variable to hold operation state
 
+uint16_t sumAllreadings = 0;
 
 
 // Sleep parameters
 const uint64_t OPERATION_TIME =   3500;  // 11 seconds in milliseconds
-const uint64_t SLEEP_TIME =  1000000 /*60000000 */;      // 60 seconds in milliseconds
+const uint64_t SLEEP_TIME =  1000000 /*900000000 */;      // 60 seconds in milliseconds
 uint32_t operationStartTime = 0;
 bool shouldEnterSleep = false;
 uint32_t currentTime = 0;
@@ -195,11 +196,22 @@ void Task1sec(void *parameters)
                 sensors.counter_readings = 0;
                 sensors.counterAllreadings = 0;
                 operation_State = reading_finished; // Set state to finished
-                shouldEnterSleep = true; 
-                for (int i = 0; i < RTC_getReadingIndex()  ; i++) 
+                Serial.println("................................. time " + String(millis()));
+                for (int i = RTC_getReadingIndex() - 1 ; i >= (RTC_getReadingIndex() - TOTAL_READING_ROUTINE )  ; i--) 
                 {
+                    sumAllreadings += RTC_get_Reading_History(i);
                     Serial.println("ALL reading History " + String(i ) + ": " + String(RTC_get_Reading_History(i)));
                 }
+                sumAllreadings /= 3;
+                Serial.println("ALL reading History Summerized :" + String(sumAllreadings));
+                InfluxDB_sendData(sumAllreadings); 
+                Serial.println("................................. time " + String(millis()));
+                shouldEnterSleep = true; 
+                // for (int i = 0; i < RTC_getReadingIndex()  ; i++) 
+                // {
+                //     sumAllreadings += RTC_clearReadings(i);
+                //     Serial.println("ALL reading History " + String(i ) + ": " + String(RTC_get_Reading_History(i)));
+                // }
 
             }
         }
@@ -247,7 +259,7 @@ void setup()
         Serial.printf("Connected to: %s\n", status->ssid);
     }
 
-
+    InfluxDB_handler_init();
 
     // Record start time
     shouldEnterSleep = false; // Initialize sleep flag
@@ -334,7 +346,7 @@ static void main_init_Tasks(void)
     xTaskCreate(
         Task1sec,
         "Task1sec",
-        2048,
+        8192,
         NULL,
         2,
         &Task4Handle
